@@ -12,27 +12,23 @@ class BlockchainTxChecker:
         scan = DATA[chain]['scan']
 
         logger.info(
-            f'{wallet_name} | {address} | {chain} - жду подтверждения транзакции {scan}{self.w3.to_hex(tx_hash)}...')
+            f'{wallet_name} | {address} | {chain} - waiting for tx approve {scan}{self.w3.to_hex(tx_hash)}...')
         
-        start_time = int(time.time())
+        start_time = time.time()
         while True:
             current_time = int(time.time())
             
             if current_time >= start_time + MAX_WAIT_TIME:
-                logger.info(
-                    f'{wallet_name} | {address} | {chain} - транзакция не подтвердилась за {MAX_WAIT_TIME} cекунд, начинаю повторную отправку...'
+                logger.warning(
+                    f'{wallet_name} | {address} | {chain} - tx is not approved for {MAX_WAIT_TIME} secs, start resending...'
                 )
                 return 0
             try:
-                time.sleep(4)
                 status = self.w3.eth.get_transaction_receipt(tx_hash)['status']
                 if status == 1:
                     return status
+                time.sleep(1)
             except Exception as e:
-                error = str(e)
-                logger.info(
-                    f'{wallet_name} | {address} | {chain} - произошла ошибка, {error}'
-                )
                 time.sleep(1)
     
     def sleep_indicator(self, wallet_name, address, chain):
