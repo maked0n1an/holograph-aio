@@ -34,7 +34,7 @@ def main():
     if MODE == 'minter':
         logger.info(f'The minting of {NFT_NAME} NFT has been launched') 
         for wallet_name, private_key in wallet_key_proxy_tuple:
-            nft_operations = Nft(wallet_name, private_key, CHAINS_FOR_BRIDGE, CHAINS_FOR_BRIDGE, AMOUNT_OF_NFTS)
+            nft_operations = Nft(wallet_name, private_key, CHAINS_FOR_BRIDGE, CHAINS_FOR_BRIDGE)
             nft_operations.mint_nft()
     elif MODE == 'bridger':
         logger.info(f'The minting and bridging of {NFT_NAME} NFT has been launched')
@@ -51,7 +51,7 @@ def main():
 if __name__ == '__main__':
     authors = ["@1liochka1", "@maked0n1an"]
     random.shuffle(authors)
-    art = text2art(text="Green Skull Minter", font="standart")
+    art = text2art(text=NFT_NAME + ' NFT', font="standart")
     print(colored(art, "cyan"))
     print(colored(f"Authors: {authors[0]}, {authors[1]}\n", "cyan"))
 
