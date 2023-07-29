@@ -17,7 +17,7 @@ from util.data import *
 from util.chain import Chain
 
 class Nft(BlockchainTxChecker):
-    def __init__(self, wallet_name, private_key, chain, to_chain, count):
+    def __init__(self, wallet_name, private_key, chain, to_chain):
         self.wallet_name = wallet_name
         self.private_key = private_key
         self.chain = random.choice(chain) if type(chain) == list else chain
@@ -25,7 +25,7 @@ class Nft(BlockchainTxChecker):
         self.w3 = ''
         self.account = ''
         self.address = ''
-        self.count = random.randint(count[0], count[1]) if type(count) == list else count
+        self.count = random.randint(AMOUNT_OF_NFTS[0], AMOUNT_OF_NFTS[1]) if isinstance(AMOUNT_OF_NFTS, (list, tuple)) else count
         self.delay = random.randint(DELAY[0], DELAY[1])
         self.nft_address = Web3.to_checksum_address(NFT_CONTRACT)
         self.holograph_bridge_contract = Web3.to_checksum_address(HOLOGRAPH_BRIDGE_CONTRACT)
@@ -74,20 +74,20 @@ class Nft(BlockchainTxChecker):
                 status = self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
                 if status == 1:
                     scan = DATA[self.chain]['scan']
-                    logger.info(
+                    logger.success(
                         f'{self.wallet_name} | {self.address} | {self.chain} - successfully minted {self.count} {NFT_NAME} NFT(s): {scan}{self.w3.to_hex(tx_hash)}...')
                     self.sleep_indicator(self.wallet_name, self.address, self.chain)
                     return self.private_key, self.address, 'success'
             except Exception as e:
                 error = str(e)
                 if "insufficient funds for gas * price + value" in error:
-                    logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - нет баланса нативного токена')
+                    logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - not enough native balance')
                     return self.private_key, self.address, 'error'
                 elif 'nonce too low' in error or 'already known' in error:
-                    logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - пробую еще раз...')
+                    logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - trying one more time...')
                     self.mint_nft()
                 else:
-                    logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - {e}')
+                    logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - error, {e}')
                     return self.private_key, self.address, 'error'
 
     def check_nft_in_one_chain(self):
@@ -212,7 +212,7 @@ class Nft(BlockchainTxChecker):
                     self.sleep_indicator(self.wallet_name, self.address, self.chain)
                     return self.private_key, self.address, 'success'
                 else:
-                    self.logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - пробую минт еще раз...')
+                    self.logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - try to mint one more time...')
                     self.mint()
             except Exception as e:
                 error = str(e)
@@ -220,7 +220,7 @@ class Nft(BlockchainTxChecker):
                     logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - not enough balance in native token')
                     return self.private_key, self.address, 'error'
                 elif 'nonce too low' in error or 'already known' in error:
-                    logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - trying one more...')
+                    logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - try to mint one more time...')
                     self.bridge()
                 else:
                     logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - {e}')
