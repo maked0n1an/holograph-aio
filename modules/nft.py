@@ -22,15 +22,15 @@ class Nft(BlockchainTxChecker):
         self.private_key = private_key
         self.chain = random.choice(chain) if type(chain) == list else chain
         self.to_chain = random.choice(CHAINS_FOR_BRIDGE) if type(to_chain) == list else to_chain
-        self.w3 = ''
-        self.account = ''
-        self.address = ''
+        self.w3 = Web3(Web3.HTTPProvider(DATA[self.chain]['rpc']))
+        self.account = self.w3.eth.account.from_key(self.private_key)
+        self.address = self.account.address
         self.count = random.randint(AMOUNT_OF_NFTS[0], AMOUNT_OF_NFTS[1]) if isinstance(AMOUNT_OF_NFTS, (list, tuple)) else count
         self.delay = random.randint(DELAY[0], DELAY[1])
         self.nft_address = Web3.to_checksum_address(NFT_CONTRACT)
         self.holograph_bridge_contract = Web3.to_checksum_address(HOLOGRAPH_BRIDGE_CONTRACT)
         self.layerzero_endpoint_address = Web3.to_checksum_address(LAYERZERO_ENDPOINT)
-    
+
     def get_native_balance(self):
         chains = CHAINS_FOR_BRIDGE.copy()
         random.shuffle(chains) 
@@ -90,10 +90,10 @@ class Nft(BlockchainTxChecker):
                     logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - error, {e}')
                     return self.private_key, self.address, 'error'
 
-    def check_nft_in_one_chain(self):
-        if self.chain not in [Chain.OPTIMISM, Chain.MANTLE]:
+    def check_nft_in_one_chain(self, chain):
+        if chain not in [Chain.OPTIMISM, Chain.MANTLE]:
             params = {
-                'chain': self.chain,
+                'chain': chain,
                 'format': 'decimal',
                 'token_addresses': [
                     self.nft_address
@@ -106,10 +106,10 @@ class Nft(BlockchainTxChecker):
                 result = evm_api.nft.get_wallet_nfts(api_key=MORALIS_API_KEY, params=params)
                 token_id = int(result['result'][0]['token_id'])
                 if token_id:
-                    logger.success(f'{self.wallet_name} | {self.address} | {self.chain} - NFT "{NFT_NAME}"[{token_id}] successfully found on the wallet')
-                    return сhain, token_id
+                    logger.success(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}"[{token_id}] successfully found on the wallet')
+                    return chain, token_id
             except Exception as e:            
-                logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - NFT "{NFT_NAME}" not in the wallet')
+                logger.error(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}" not in the wallet')
                 return False
         else:
             contract_abi = [
@@ -183,17 +183,17 @@ class Nft(BlockchainTxChecker):
         lzEndpoint = self.w3.eth.contract(address=self.layerzero_endpoint_address, abi=lzEndpointABI)
 
         lzFee = lzEndpoint.functions.estimateFees(layerzero_ids[self.to_chain], self.holograph_bridge_contract, '0x', False, '0x').call()[0]
-        lzFee = int(lzFee * 1.2)
+        lzFee = int(lzFee * 1.8)
         to_chain_id = holograph_ids[self.to_chain]
 
         while True:
             logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - trying to bridge...')
             try:
-                tx = holograph.functions.bridgeOutRequest(to, self.nft_address, gas_lim, gas_price,
+                tx = holograph.functions.bridgeOutRequest(to_chain_id, self.nft_address, gas_lim, gas_price,
                                                           payload).build_transaction({
                     'from': self.address,
                     'value': lzFee,
-                    'gas': holograph.functions.bridgeOutRequest(to, self.nft_address, gas_lim, gas_price,
+                    'gas': holograph.functions.bridgeOutRequest(to_chain_id, self.nft_address, gas_lim, gas_price,
                                                                 payload).estimate_gas(
                         {'from': self.address, 'value': lzFee,
                          'nonce': self.w3.eth.get_transaction_count(self.address)}),
@@ -203,6 +203,7 @@ class Nft(BlockchainTxChecker):
                 })
                 tx = self.set_gas_price_for_bsc(tx)
                 scan = DATA[self.chain]['scan']
+
                 sign = self.account.sign_transaction(tx)
                 tx_hash = self.w3.eth.send_raw_transaction(sign.rawTransaction)
                 status =  self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
@@ -212,8 +213,8 @@ class Nft(BlockchainTxChecker):
                     self.sleep_indicator(self.wallet_name, self.address, self.chain)
                     return self.private_key, self.address, 'success'
                 else:
-                    self.logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - try to mint one more time...')
-                    self.mint()
+                    logger.warning(f'{self.wallet_name} | {self.address} | {self.chain} - try to mint one more time...')
+                    self.mint_nft()
             except Exception as e:
                 error = str(e)
                 if "insufficient funds for gas * price + value" in error:
@@ -221,7 +222,7 @@ class Nft(BlockchainTxChecker):
                     return self.private_key, self.address, 'error'
                 elif 'nonce too low' in error or 'already known' in error:
                     logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - try to mint one more time...')
-                    self.bridge()
+                    self.bridge_nft()
                 else:
                     logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - {e}')
                     return self.private_key, self.address, 'error'
