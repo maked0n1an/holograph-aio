@@ -20,7 +20,7 @@ def write_to_main_log():
         "</cyan> <white>{message}</white>",
     )
     logger.add(
-        f"{out_file}output_data/main.log",
+        "main.log",
         format="<white>{time: MM/DD/YYYY HH:mm:ss}</white> | <level>"
         "{level: <8}</level> | <cyan>"
         "</cyan> <white>{message}</white>",

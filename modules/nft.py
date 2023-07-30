@@ -1,8 +1,8 @@
-import json
 import random
 import aiohttp
 import copy
 import random
+import time
 
 from web3 import Web3
 from loguru import logger
@@ -139,11 +139,9 @@ class Nft(BlockchainTxChecker):
                     token_id = contract.functions.tokensOfOwner(self.address).call()[0]
                     logger.success(f'{self.wallet_name} | {self.address} | {self.chain} - "{NFT_NAME}"[{token_id}] NFT successfully found in the wallet')
                     return chain, token_id
-                else:
-                    logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - {NFT_NAME}"[{token_id}] NFT is not found in the wallet...')
-                    return False
             except Exception as e:
-                time.sleep(1)
+                logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - {NFT_NAME}"[{token_id}] NFT is not found in the wallet...')
+                return False
 
     def check_nft_in_some_chains_return_some(self):
         result = []
@@ -158,6 +156,7 @@ class Nft(BlockchainTxChecker):
             is_have_nft = self.check_nft_in_one_chain(chain)
             if is_have_nft:
                 return is_have_nft
+        logger.error(f'{self.wallet_name} | {self.address} | - "{NFT_NAME}" NFT is not found in any chain in the wallet...')
         return None
 
     def bridge_nft(self):
@@ -183,7 +182,7 @@ class Nft(BlockchainTxChecker):
         lzEndpoint = self.w3.eth.contract(address=self.layerzero_endpoint_address, abi=lzEndpointABI)
 
         lzFee = lzEndpoint.functions.estimateFees(layerzero_ids[self.to_chain], self.holograph_bridge_contract, '0x', False, '0x').call()[0]
-        lzFee = int(lzFee * 1.8)
+        lzFee = int(lzFee * FEE_MULTIPLICATOR)
         to_chain_id = holograph_ids[self.to_chain]
 
         while True:
