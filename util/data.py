@@ -51,7 +51,8 @@ min_balances = {
     Chain.BSC:          0.001,
     Chain.POLYGON:      0.1,
     Chain.OPTIMISM:     0.000025,
-    Chain.MANTLE:       0.4
+    Chain.MANTLE:       0.4,
+    Chain.ARBITRUM:     0.000075
 }
 
 holograph_ids = {
