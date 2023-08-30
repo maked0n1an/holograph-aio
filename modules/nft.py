@@ -17,7 +17,7 @@ from util.data import *
 from util.chain import Chain
 
 class Nft(BlockchainTxChecker):
-    def __init__(self, wallet_name, private_key, chain, to_chain):
+    def __init__(self, wallet_name, private_key, chain, to_chain, amount_of_nfts):
         self.wallet_name = wallet_name
         self.private_key = private_key
         self.chain = random.choice(chain) if type(chain) == list else chain
@@ -25,11 +25,17 @@ class Nft(BlockchainTxChecker):
         self.w3 = Web3(Web3.HTTPProvider(DATA[self.chain]['rpc']))
         self.account = self.w3.eth.account.from_key(self.private_key)
         self.address = self.account.address
-        self.count = random.randint(AMOUNT_OF_NFTS[0], AMOUNT_OF_NFTS[1]) if isinstance(AMOUNT_OF_NFTS, (list, tuple)) else count
+        self.count = random.randint(amount_of_nfts[0], amount_of_nfts[1]) if isinstance(amount_of_nfts, (list, tuple)) else amount_of_nfts
         self.delay = random.randint(DELAY[0], DELAY[1])
         self.nft_address = Web3.to_checksum_address(NFT_CONTRACT)
         self.holograph_bridge_contract = Web3.to_checksum_address(HOLOGRAPH_BRIDGE_CONTRACT)
         self.layerzero_endpoint_address = Web3.to_checksum_address(LAYERZERO_ENDPOINT)
+
+    def _get_fee(self, nft_amount_to_mint):
+        contract = self.w3.eth.contract(self.nft_address, abi=abi)
+        fee = contract.functions.getHolographFeeWei(nft_amount_to_mint).call()
+
+        return int(fee * 1.03)
 
     def get_native_balance(self):
         chains = CHAINS_FOR_BRIDGE.copy()
@@ -43,53 +49,7 @@ class Nft(BlockchainTxChecker):
                 return chain
         
         return False
-
-    def mint_nft(self):
-        chain = self.get_native_balance()
-
-        if chain:
-            self.chain = chain
-        else:
-            return self.private_key, self.address, 'not enough balance'
-
-        self.w3 = Web3(Web3.HTTPProvider(DATA[self.chain]['rpc']))
-        self.account = self.w3.eth.account.from_key(self.private_key)
-        self.address = self.account.address
-        while True:
-            try:
-                nonce = self.w3.eth.get_transaction_count(self.address)
-                contract = self.w3.eth.contract(address=self.nft_address, abi=abi)
-                tx = contract.functions.purchase(self.count).build_transaction({
-                    'from': self.address,
-                    'gas': contract.functions.purchase(self.count).estimate_gas(
-                        {'from': self.address, 'nonce': nonce}),
-                    'nonce': nonce,
-                    'maxFeePerGas': int(self.w3.eth.gas_price),
-                    'maxPriorityFeePerGas': int(self.w3.eth.gas_price * 0.8)
-                })
-                tx = self.set_gas_price_for_bsc(tx)
-
-                sign = self.account.sign_transaction(tx)
-                tx_hash = self.w3.eth.send_raw_transaction(sign.rawTransaction)
-                status = self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
-                if status == 1:
-                    scan = DATA[self.chain]['scan']
-                    logger.success(
-                        f'{self.wallet_name} | {self.address} | {self.chain} - successfully minted {self.count} {NFT_NAME} NFT(s): {scan}{self.w3.to_hex(tx_hash)}...')
-                    self.sleep_indicator(self.wallet_name, self.address, self.chain)
-                    return self.private_key, self.address, 'success'
-            except Exception as e:
-                error = str(e)
-                if "insufficient funds for gas * price + value" in error:
-                    logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - not enough native balance')
-                    return self.private_key, self.address, 'error'
-                elif 'nonce too low' in error or 'already known' in error:
-                    logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - trying one more time...')
-                    self.mint_nft()
-                else:
-                    logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - error, {e}')
-                    return self.private_key, self.address, 'error'
-
+    
     def check_nft_in_one_chain(self, chain):
         if chain not in [Chain.OPTIMISM, Chain.MANTLE]:
             params = {
@@ -106,10 +66,11 @@ class Nft(BlockchainTxChecker):
                 result = evm_api.nft.get_wallet_nfts(api_key=MORALIS_API_KEY, params=params)
                 token_id = int(result['result'][0]['token_id'])
                 if token_id:
-                    logger.success(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}"[{token_id}] successfully found on the wallet')
+                    # logger.success(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}"[{token_id}] successfully found on the wallet')
                     return chain, token_id
+                return False
             except Exception as e:            
-                logger.error(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}" not in the wallet')
+                logger.error(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}" not in the wallet: {e}')
                 return False
         else:
             contract_abi = [
@@ -147,20 +108,106 @@ class Nft(BlockchainTxChecker):
         result = []
         for chain in CHAINS_FOR_BRIDGE:
             is_have_nft = self.check_nft_in_one_chain(chain)
-            if is_have_nft:
+            if isinstance(is_have_nft, tuple):
                 results.append(is_have_nft)
         return results
 
-    def check_nft_in_some_chains(self):
+    def check_any_nft(self):
         for chain in CHAINS_FOR_BRIDGE:
             is_have_nft = self.check_nft_in_one_chain(chain)
             if is_have_nft:
                 return is_have_nft
         logger.error(f'{self.wallet_name} | {self.address} | - "{NFT_NAME}" NFT is not found in any chain in the wallet...')
         return None
+    
+    def mint_nft(self):
+        chain = self.get_native_balance()
+
+        if chain:
+            self.chain = chain
+        else:
+            return self.private_key, self.address, 'not enough balance'
+
+        self.w3 = Web3(Web3.HTTPProvider(DATA[self.chain]['rpc']))
+        self.account = self.w3.eth.account.from_key(self.private_key)
+        self.address = self.account.address
+        fee = self._get_fee(self.count)
+
+        try:
+            nonce = self.w3.eth.get_transaction_count(self.address)
+            contract = self.w3.eth.contract(address=self.nft_address, abi=abi)
+
+            tx = contract.functions.purchase(self.count).build_transaction({
+                'from': self.address,
+                'nonce': nonce,
+                'value': fee,
+                'maxFeePerGas': 0,
+                'maxPriorityFeePerGas': 0
+            })
+            gas = self.w3.eth.gas_price
+            tx['maxFeePerGas'], tx['maxPriorityFeePerGas'] = gas, gas
+
+            tx = self.set_gas_price_for_bsc(tx)
+
+            logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - minting is started...')
+            sign = self.account.sign_transaction(tx)
+            tx_hash = self.w3.eth.send_raw_transaction(sign.rawTransaction)
+            status = self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
+            if status == 1:
+                scan = DATA[self.chain]['scan']
+                logger.success(
+                    f'{self.wallet_name} | {self.address} | {self.chain} - successfully minted {self.count} {NFT_NAME} NFT(s): {scan}{self.w3.to_hex(tx_hash)}...')
+                return self.private_key, self.address, 'success'
+        except Exception as e:
+            error = str(e)
+            if "insufficient funds for gas * price + value" in error:
+                logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - not enough native balance')
+                return self.private_key, self.address, 'error'
+            elif 'nonce too low' in error or 'already known' in error:
+                logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - trying one more time...')
+                self.mint_nft()
+            else:
+                logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - error, {e}')
+                return self.private_key, self.address, 'error'
+
+    
+        # while True:
+        #     try:
+        #         nonce = self.w3.eth.get_transaction_count(self.address)
+        #         contract = self.w3.eth.contract(address=self.nft_address, abi=abi)
+        #         tx = contract.functions.purchase(self.count).build_transaction({
+        #             'from': self.address,
+        #             'gas': contract.functions.purchase(self.count).estimate_gas(
+        #                 {'from': self.address, 'nonce': nonce}),
+        #             'nonce': nonce,
+        #             'maxFeePerGas': int(self.w3.eth.gas_price),
+        #             'maxPriorityFeePerGas': int(self.w3.eth.gas_price * 0.8)
+        #         })
+        #         tx = self.set_gas_price_for_bsc(tx)
+
+        #         sign = self.account.sign_transaction(tx)
+        #         tx_hash = self.w3.eth.send_raw_transaction(sign.rawTransaction)
+        #         status = self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
+        #         if status == 1:
+        #             scan = DATA[self.chain]['scan']
+        #             logger.success(
+        #                 f'{self.wallet_name} | {self.address} | {self.chain} - successfully minted {self.count} {NFT_NAME} NFT(s): {scan}{self.w3.to_hex(tx_hash)}...')
+        #             self.sleep_indicator(self.wallet_name, self.address, self.chain)
+        #             return self.private_key, self.address, 'success'
+        #     except Exception as e:
+        #         error = str(e)
+        #         if "insufficient funds for gas * price + value" in error:
+        #             logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - not enough native balance')
+        #             return self.private_key, self.address, 'error'
+        #         elif 'nonce too low' in error or 'already known' in error:
+        #             logger.info(f'{self.wallet_name} | {self.address} | {self.chain} - trying one more time...')
+        #             self.mint_nft()
+        #         else:
+        #             logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - error, {e}')
+        #             return self.private_key, self.address, 'error'
 
     def bridge_nft(self):
-        nft_data = self.check_nft_in_some_chains()
+        nft_data = self.check_any_nft()
 
         if nft_data:
             self.chain, nft_id = nft_data
@@ -205,7 +252,7 @@ class Nft(BlockchainTxChecker):
 
                 sign = self.account.sign_transaction(tx)
                 tx_hash = self.w3.eth.send_raw_transaction(sign.rawTransaction)
-                status =  self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
+                status = self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
                 if status == 1:
                     logger.success(
                         f'{self.wallet_name} | {self.address} | {self.chain} - successfully bridged "{NFT_NAME}"[{nft_id}] to {self.to_chain} : {scan}{self.w3.to_hex(tx_hash)}...')
