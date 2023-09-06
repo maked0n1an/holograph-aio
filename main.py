@@ -34,13 +34,13 @@ def main():
     if MODE == 'minter':
         logger.info(f'The minting of {NFT_NAME} NFT has been launched') 
         for wallet_name, private_key in name_key_tuple:
-            nft_operations = Nft(wallet_name, private_key, CHAINS_FOR_BRIDGE, CHAINS_FOR_BRIDGE, AMOUNT_OF_NFTS)
+            nft_operations = Nft(wallet_name, private_key, BRIDGE_FROM_CHAINS, Chain.AVALANCHE, AMOUNT_OF_NFTS)
             nft_operations.mint_nft()
             
     elif MODE == 'bridger':
         logger.info(f'The minting and bridging of {NFT_NAME} NFT has been launched')
         for wallet_name, private_key in name_key_tuple:
-            nft_operations = Nft(wallet_name, private_key, Chain.BSC, Chain.AVALANCHE, AMOUNT_OF_NFTS)
+            nft_operations = Nft(wallet_name, private_key, BRIDGE_FROM_CHAINS, BRIDGE_TO_CHAINS, AMOUNT_OF_NFTS)
             nft_operations.mint_nft()
             nft_operations.bridge_nft()
     else:
