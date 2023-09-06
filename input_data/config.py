@@ -4,7 +4,7 @@ NFT_NAME = 'Holograph x LayerZero'
 NFT_CONTRACT = '0x2c4BD4e25D83285f417E26a44069F41d1a8aD0e7'
 
 # Select mode to work: 'minter' | 'bridger'
-MODE = 'bridger'
+MODE = 'minter'
 
 # Amount for mint nft: 
 # AMOUNT_OF_NFTS = 1 - it will be ONLY this number for each account 
