@@ -33,7 +33,7 @@ class BlockchainTxChecker:
     
     def sleep_indicator(self, wallet_name, address, chain):
         secs = random.randint(DELAY[0], DELAY[1])
-        logger.info(f'{wallet_name} | {address} | {chain} - жду {secs} секунд...')
+        logger.info(f'{wallet_name} | {address} | {chain} - waiting for {secs} seconds...')
         time.sleep(secs)
 
     def set_gas_price_for_bsc(self, tx):
