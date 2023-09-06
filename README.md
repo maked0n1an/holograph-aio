@@ -1,4 +1,4 @@
-<h1 align="center">Holograph Fallen Star Minter&Bridger</h1>
+<h1 align="center">Holograph Minter&Bridger</h1>
 
 <h2>О боте</h2>
 Минтит новые нфт на https://app.holograph.xyz/</br>
@@ -10,4 +10,4 @@
 
 <pre><code> pip install -r requirements.txt</code></pre>
 
-После запуска можно проверить логи в output_data/main.log
+После запуска можно проверить логи в main.log
