@@ -25,21 +25,21 @@ def main():
         return    
 
     logger.info('The bot has been started')
-
-    wallet_key_proxy_tuple = list(zip(WALLET_NAMES, PRIVATE_KEYS))
+    logger.info(f'The amount of accs is: {len(PRIVATE_KEYS)}')
+    name_key_tuple = list(zip(WALLET_NAMES, PRIVATE_KEYS))
     
     if IS_SHUFFLE_KEYS:
-        random.shuffle(wallet_key_proxy_tuple)
+        random.shuffle(name_key_tuple)
 
     if MODE == 'minter':
         logger.info(f'The minting of {NFT_NAME} NFT has been launched') 
-        for wallet_name, private_key in wallet_key_proxy_tuple:
+        for wallet_name, private_key in name_key_tuple:
             nft_operations = Nft(wallet_name, private_key, CHAINS_FOR_BRIDGE, CHAINS_FOR_BRIDGE, AMOUNT_OF_NFTS)
             nft_operations.mint_nft()
             
     elif MODE == 'bridger':
         logger.info(f'The minting and bridging of {NFT_NAME} NFT has been launched')
-        for wallet_name, private_key in wallet_key_proxy_tuple:
+        for wallet_name, private_key in name_key_tuple:
             nft_operations = Nft(wallet_name, private_key, Chain.BSC, Chain.AVALANCHE, AMOUNT_OF_NFTS)
             nft_operations.mint_nft()
             nft_operations.bridge_nft()

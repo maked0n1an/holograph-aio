@@ -157,6 +157,7 @@ class Nft(BlockchainTxChecker):
                 scan = DATA[self.chain]['scan']
                 logger.success(
                     f'{self.wallet_name} | {self.address} | {self.chain} - successfully minted {self.count} {NFT_NAME} NFT(s): {scan}{self.w3.to_hex(tx_hash)}...')
+                self.sleep_indicator(self.wallet_name, self.address, self.chain)
                 return self.private_key, self.address, 'success'
         except Exception as e:
             error = str(e)
