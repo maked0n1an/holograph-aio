@@ -28,7 +28,7 @@ def write_to_main_log():
     
     return logger
 
-def main_sleep_indicator(self, wallet_name):
+def main_sleep_indicator(wallet_name):
     secs = random.randint(DELAY[0], DELAY[1])
     logger.info(f'{wallet_name} - waiting for {secs} seconds...')
     time.sleep(secs)
