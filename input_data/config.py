@@ -23,30 +23,26 @@ IS_SHUFFLE_KEYS = 1
     BRIDGE_FROM_CHAINS = [ - the script will be minting from Avalanche only and bridge to BSC (for example)
         Chain.AVALANCHE, 
         # Chain.POLYGON, 
-        # Chain.BSC, 
-        # Chain.ARBITRUM
+        # Chain.BSC,
     ]
 
     BRIDGE_TO_CHAINS = [
         # Chain.AVALANCHE, 
         # Chain.POLYGON, 
         Chain.BSC, 
-        # Chain.ARBITRUM
     ] 
 '''
 
 BRIDGE_FROM_CHAINS = [
     Chain.AVALANCHE, 
     Chain.POLYGON, 
-    Chain.BSC, 
-    Chain.ARBITRUM
+    Chain.BSC
 ]
 
 BRIDGE_TO_CHAINS = [
     Chain.AVALANCHE, 
     Chain.POLYGON, 
-    Chain.BSC, 
-    Chain.ARBITRUM
+    Chain.BSC
 ] 
 
 FEE_MULTIPLICATOR = 1.8

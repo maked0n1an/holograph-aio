@@ -21,7 +21,7 @@ class Nft(BlockchainTxChecker):
         self.wallet_name = wallet_name
         self.private_key = private_key
         self.chain = random.choice(chain) if type(chain) == list else chain
-        self.to_chain = random.choice(CHAINS_FOR_BRIDGE) if type(to_chain) == list else to_chain
+        self.to_chain = random.choice(BRIDGE_FROM_CHAINS) if type(to_chain) == list else to_chain
         self.w3 = Web3(Web3.HTTPProvider(DATA[self.chain]['rpc']))
         self.account = self.w3.eth.account.from_key(self.private_key)
         self.address = self.account.address
@@ -38,7 +38,7 @@ class Nft(BlockchainTxChecker):
         return int(fee * 1.03)
 
     def get_native_balance(self):
-        chains = CHAINS_FOR_BRIDGE.copy()
+        chains = BRIDGE_FROM_CHAINS.copy()
         random.shuffle(chains) 
         for chain in chains:
             w3 = Web3(Web3.HTTPProvider(DATA[chain]['rpc']))
@@ -66,12 +66,12 @@ class Nft(BlockchainTxChecker):
                 result = evm_api.nft.get_wallet_nfts(api_key=MORALIS_API_KEY, params=params)
                 token_id = int(result['result'][0]['token_id'])
                 if token_id:
-                    # logger.success(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}"[{token_id}] successfully found on the wallet')
+                    logger.success(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}"[{token_id}] successfully found on the wallet')
                     return chain, token_id
                 return False
-            except Exception as e:            
-                logger.error(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}" not in the wallet: {e}')
-                return False
+            except Exception as e:
+                if 'list index out of range' in str(e):
+                    return False
         else:
             contract_abi = [
                 {
@@ -100,20 +100,21 @@ class Nft(BlockchainTxChecker):
                     token_id = contract.functions.tokensOfOwner(self.address).call()[0]
                     logger.success(f'{self.wallet_name} | {self.address} | {self.chain} - "{NFT_NAME}"[{token_id}] NFT successfully found in the wallet')
                     return chain, token_id
+                return False
             except Exception as e:
-                logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - {NFT_NAME}"[{token_id}] NFT is not found in the wallet...')
+                logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - error, {e}')
                 return False
 
     def check_nft_in_some_chains_return_some(self):
         result = []
-        for chain in CHAINS_FOR_BRIDGE:
+        for chain in BRIDGE_FROM_CHAINS:
             is_have_nft = self.check_nft_in_one_chain(chain)
             if isinstance(is_have_nft, tuple):
                 results.append(is_have_nft)
         return results
 
     def check_any_nft(self):
-        for chain in CHAINS_FOR_BRIDGE:
+        for chain in BRIDGE_FROM_CHAINS:
             is_have_nft = self.check_nft_in_one_chain(chain)
             if is_have_nft:
                 return is_have_nft
@@ -126,6 +127,7 @@ class Nft(BlockchainTxChecker):
         if chain:
             self.chain = chain
         else:
+            logger.error(f'{self.wallet_name} | {self.address} | - could not get chain for mint NFT')
             return self.private_key, self.address, 'not enough balance'
 
         self.w3 = Web3(Web3.HTTPProvider(DATA[self.chain]['rpc']))
@@ -156,8 +158,7 @@ class Nft(BlockchainTxChecker):
             if status == 1:
                 scan = DATA[self.chain]['scan']
                 logger.success(
-                    f'{self.wallet_name} | {self.address} | {self.chain} - successfully minted {self.count} {NFT_NAME} NFT(s): {scan}{self.w3.to_hex(tx_hash)}...')
-                self.sleep_indicator(self.wallet_name, self.address, self.chain)
+                    f'{self.wallet_name} | {self.address} | {self.chain} - successfully minted {self.count} {NFT_NAME} NFT(s): {scan}{self.w3.to_hex(tx_hash)}...')                
                 return self.private_key, self.address, 'success'
         except Exception as e:
             error = str(e)
@@ -183,10 +184,11 @@ class Nft(BlockchainTxChecker):
             self.account = self.w3.eth.account.from_key(self.private_key)
             self.address = self.account.address
             if self.chain == self.to_chain:
-                chains = CHAINS_FOR_BRIDGE.copy()
+                chains = BRIDGE_TO_CHAINS.copy()
                 chains.remove(self.to_chain)
                 self.to_chain = random.choice(chains)
         else:
+            logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - NFT is not found in wallet')
             return self.private_key, self.address, 'NFT is not found in wallet'
         
         payload = to_hex(encode(['address', 'address', 'uint256'], [self.address, self.address, nft_id]))

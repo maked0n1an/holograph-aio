@@ -8,6 +8,7 @@ from loguru import logger
 
 from input_data.config import *
 from modules.nft import Nft
+from modules.blockchain_tx_checker import BlockchainTxChecker
 from util.file_utils import *
 
 def main():
@@ -36,12 +37,14 @@ def main():
         for wallet_name, private_key in name_key_tuple:
             nft_operations = Nft(wallet_name, private_key, BRIDGE_FROM_CHAINS, Chain.AVALANCHE, AMOUNT_OF_NFTS)
             nft_operations.mint_nft()
+            BlockchainTxChecker.sleep_indicator(wallet_name=wallet_name)
             
     elif MODE == 'bridger':
         logger.info(f'The minting and bridging of {NFT_NAME} NFT has been launched')
         for wallet_name, private_key in name_key_tuple:
             nft_operations = Nft(wallet_name, private_key, BRIDGE_FROM_CHAINS, BRIDGE_TO_CHAINS, AMOUNT_OF_NFTS)
             nft_operations.mint_nft()
+            main_sleep_indicator(wallet_name=wallet_name)
             nft_operations.bridge_nft()
     else:
         logger.info('Incorrect mode, please check config.py!')
