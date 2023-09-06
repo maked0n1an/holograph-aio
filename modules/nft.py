@@ -163,10 +163,7 @@ class Nft(BlockchainTxChecker):
                 return self.private_key, self.address, 'success'
         except Exception as e:
             error = str(e)
-            if "insufficient funds for gas * price + value" in error:
-                logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - not enough native balance')
-                return self.private_key, self.address, 'error'
-            elif "error, {'code': -32000, 'message': 'INTERNAL_ERROR: insufficient funds'}" in error:
+            if "insufficient funds for gas * price + value" or "error, {'code': -32000, 'message': 'INTERNAL_ERROR: insufficient funds'}" in error:
                 logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - not enough native balance')
                 return self.private_key, self.address, 'error'
             elif 'nonce too low' in error or 'already known' in error:
@@ -234,7 +231,7 @@ class Nft(BlockchainTxChecker):
                     self.mint_nft()
             except Exception as e:
                 error = str(e)
-                if "insufficient funds for gas * price + value" in error:
+                if "insufficient funds for gas * price + value" or "error, {'code': -32000, 'message': 'INTERNAL_ERROR: insufficient funds'}" in error:
                     logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - not enough balance in native token')
                     return self.private_key, self.address, 'error'
                 elif 'nonce too low' in error or 'already known' in error:
