@@ -45,8 +45,6 @@ BRIDGE_TO_CHAINS = [
     Chain.BSC
 ] 
 
-FEE_MULTIPLICATOR = 1.8
-
 # break between activities
 DELAY = (100, 700)
 

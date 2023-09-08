@@ -21,7 +21,7 @@ class Nft(BlockchainTxChecker):
         self.wallet_name = wallet_name
         self.private_key = private_key
         self.chain = random.choice(chain) if type(chain) == list else chain
-        self.to_chain = random.choice(BRIDGE_FROM_CHAINS) if type(to_chain) == list else to_chain
+        self.to_chain = random.choice(BRIDGE_TO_CHAINS) if type(to_chain) == list else to_chain
         self.w3 = Web3(Web3.HTTPProvider(DATA[self.chain]['rpc']))
         self.account = self.w3.eth.account.from_key(self.private_key)
         self.address = self.account.address
@@ -118,7 +118,7 @@ class Nft(BlockchainTxChecker):
             is_have_nft = self.check_nft_in_one_chain(chain)
             if is_have_nft:
                 return is_have_nft
-        logger.error(f'{self.wallet_name} | {self.address} | - "{NFT_NAME}" NFT is not found in any chain in the wallet...')
+        logger.error(f'{self.wallet_name} | {self.address} | - "{NFT_NAME}" NFT is not found in any chain for bridge...')
         return None
     
     def mint_nft(self):
@@ -127,7 +127,7 @@ class Nft(BlockchainTxChecker):
         if chain:
             self.chain = chain
         else:
-            logger.error(f'{self.wallet_name} | {self.address} | - could not get chain for mint NFT')
+            logger.error(f'{self.wallet_name} | {self.address} | - not enough balance for mint in any chain')
             return self.private_key, self.address, 'not enough balance'
 
         self.w3 = Web3(Web3.HTTPProvider(DATA[self.chain]['rpc']))
@@ -186,18 +186,19 @@ class Nft(BlockchainTxChecker):
                 chains.remove(self.to_chain)
                 self.to_chain = random.choice(chains)
         else:
-            logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - NFT is not found in wallet')
             return self.private_key, self.address, 'NFT is not found in wallet'
         
         payload = to_hex(encode(['address', 'address', 'uint256'], [self.address, self.address, nft_id]))
         gas_price = holograph_gas_limit[self.to_chain]
-        gas_lim = random.randint(450000, 500000)
+        gas_lim = random.randint(390000, 400000)        
+        random_number = random_fee_multiplicator[self.to_chain]
 
         holograph = self.w3.eth.contract(address=self.holograph_bridge_contract, abi=holo_abi)
         lzEndpoint = self.w3.eth.contract(address=self.layerzero_endpoint_address, abi=lzEndpointABI)
 
         lzFee = lzEndpoint.functions.estimateFees(layerzero_ids[self.to_chain], self.holograph_bridge_contract, '0x', False, '0x').call()[0]
-        lzFee = int(lzFee * FEE_MULTIPLICATOR)
+        lzFee = int(lzFee * random_number)
+        logger.warning(f"This is lzFee multiplicator: {random_number}")
         to_chain_id = holograph_ids[self.to_chain]
 
         while True:
@@ -213,13 +214,14 @@ class Nft(BlockchainTxChecker):
                          'nonce': self.w3.eth.get_transaction_count(self.address)}),
                     'nonce': self.w3.eth.get_transaction_count(self.address),
                     'maxFeePerGas': int(self.w3.eth.gas_price),
-                    'maxPriorityFeePerGas': int(self.w3.eth.gas_price * 0.8)
+                    'maxPriorityFeePerGas': int(self.w3.eth.gas_price * 1)
                 })
                 tx = self.set_gas_price_for_bsc(tx)
                 scan = DATA[self.chain]['scan']
-
+                
                 sign = self.account.sign_transaction(tx)
                 tx_hash = self.w3.eth.send_raw_transaction(sign.rawTransaction)
+                
                 status = self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
                 if status == 1:
                     logger.success(
@@ -231,7 +233,7 @@ class Nft(BlockchainTxChecker):
                     self.mint_nft()
             except Exception as e:
                 error = str(e)
-                if "insufficient funds for gas * price + value" or "error, {'code': -32000, 'message': 'INTERNAL_ERROR: insufficient funds'}" in error:
+                if "error, {'code': -32000, 'message': 'INTERNAL_ERROR: insufficient funds'}" in error:
                     logger.error(f'{self.wallet_name} | {self.address} | {self.chain} - not enough balance in native token')
                     return self.private_key, self.address, 'error'
                 elif 'nonce too low' in error or 'already known' in error:
