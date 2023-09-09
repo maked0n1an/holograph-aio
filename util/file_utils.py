@@ -14,7 +14,7 @@ with open(f"{out_file}input_data/private_keys.txt", "r") as f:
 with open(f"{out_file}input_data/wallet_names.txt", "r") as f:
     WALLET_NAMES = [row.strip() for row in f]
     
-def write_to_main_log():
+def setup_logger():
     logger.remove()
     logger.add(
         sys.stderr,
@@ -28,7 +28,11 @@ def write_to_main_log():
         "{level: <8}</level> | <cyan>"
         "</cyan> <white>{message}</white>",
     )
-    
+
+    logger.level("HAS_NFT", no=26, color="<green>")
+    logger.level("NFT_BRIDGED", no=27, color="<green>")
+    logger.level("NFT_MINTED", no=28, color="<green>")
+
     return logger
 
 def main_sleep_indicator(wallet_name):

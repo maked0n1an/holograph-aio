@@ -66,7 +66,8 @@ class Nft(BlockchainTxChecker):
                 result = evm_api.nft.get_wallet_nfts(api_key=MORALIS_API_KEY, params=params)
                 token_id = int(result['result'][0]['token_id'])
                 if token_id:
-                    logger.success(f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}"[{token_id}] successfully found on the wallet')
+                    logger.log("HAS_NFT", 
+                        f'{self.wallet_name} | {self.address} | {chain} - NFT "{NFT_NAME}"[{token_id}] successfully found on the wallet')
                     return chain, token_id
                 return False
             except Exception as e:
@@ -157,7 +158,7 @@ class Nft(BlockchainTxChecker):
             status = self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
             if status == 1:
                 scan = DATA[self.chain]['scan']
-                logger.success(
+                logger.log("NFT_MINTED", 
                     f'{self.wallet_name} | {self.address} | {self.chain} - successfully minted {self.count} {NFT_NAME} NFT(s): {scan}{self.w3.to_hex(tx_hash)}...')
                 self.sleep_indicator(self.wallet_name, self.address, self.chain)
                 return self.private_key, self.address, 'success'
@@ -198,7 +199,7 @@ class Nft(BlockchainTxChecker):
 
         lzFee = lzEndpoint.functions.estimateFees(layerzero_ids[self.to_chain], self.holograph_bridge_contract, '0x', False, '0x').call()[0]
         lzFee = int(lzFee * random_number)
-        logger.warning(f"This is lzFee multiplicator: {random_number}")
+        # logger.warning(f"This is lzFee multiplicator: {random_number}")
         to_chain_id = holograph_ids[self.to_chain]
 
         while True:
@@ -218,13 +219,13 @@ class Nft(BlockchainTxChecker):
                 })
                 tx = self.set_gas_price_for_bsc(tx)
                 scan = DATA[self.chain]['scan']
-                
+
                 sign = self.account.sign_transaction(tx)
                 tx_hash = self.w3.eth.send_raw_transaction(sign.rawTransaction)
                 
                 status = self.check_tx_status(self.wallet_name, self.address, self.chain, tx_hash)
                 if status == 1:
-                    logger.success(
+                    logger.log("NFT_BRIDGED", 
                         f'{self.wallet_name} | {self.address} | {self.chain} - successfully bridged "{NFT_NAME}"[{nft_id}] to {self.to_chain} : {scan}{self.w3.to_hex(tx_hash)}...')
                     self.sleep_indicator(self.wallet_name, self.address, self.chain)
                     return self.private_key, self.address, 'success'

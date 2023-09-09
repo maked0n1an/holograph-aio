@@ -58,6 +58,6 @@ if __name__ == '__main__':
     print(colored(art, "cyan"))
     print(colored(f"Authors: {authors[0]}, {authors[1]}\n", "cyan"))
 
-    write_to_main_log()
+    setup_logger()
 
     main()

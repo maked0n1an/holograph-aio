@@ -78,7 +78,7 @@ holograph_gas_limit = {
 }
 
 random_fee_multiplicator = {
-    Chain.BSC:          random.uniform(3.8, 3.84),
+    Chain.BSC:          random.uniform(1.93, 2),
     Chain.AVALANCHE:    random.uniform(1.93, 2),
     Chain.POLYGON:      random.uniform(1.93, 2)
 }
